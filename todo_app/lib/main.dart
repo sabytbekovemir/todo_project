@@ -51,7 +51,7 @@ class TodoRepository {
       body: jsonEncode({'title': title}),
     );
 
-    
+
     if (response.statusCode == 201) {
       return Todo.fromJson(jsonDecode(response.body));
     } else {
@@ -64,5 +64,95 @@ class TodoRepository {
     if (response.statusCode != 200) {
       throw Exception('Failed to delete todo');
     }
+  }
+}
+
+
+
+
+// events and states
+abstract class TodoEvent extends Equatable {
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadTodosEvent extends TodoEvent {}
+
+class AddTodoEvent extends TodoEvent {
+  final String title;
+  AddTodoEvent(this.title);
+
+  @override
+  List<Object?> get props => [title];
+}
+
+class DeleteTodoEvent extends TodoEvent {
+  final int id;
+  DeleteTodoEvent(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+abstract class TodoState extends Equatable {
+  @override
+  List<Object?> get props => [];
+}
+
+class TodoLoadingState extends TodoState {}
+
+class TodoLoadedState extends TodoState {
+  final List<Todo> todos;
+  TodoLoadedState(this.todos);
+
+  @override
+  List<Object?> get props => [todos];
+}
+
+class TodoErrorState extends TodoState {
+  final String message;
+  TodoErrorState(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+
+
+
+
+// bloc logic
+class TodoBloc extends Bloc<TodoEvent, TodoState> {
+  final TodoRepository repository;
+
+  TodoBloc(this.repository) : super(TodoLoadingState()) {
+    on<LoadTodosEvent>((event, emit) async {
+      emit(TodoLoadingState());
+      try {
+        final todos = await repository.fetchTodos();
+        emit(TodoLoadedState(todos));
+      } catch (e) {
+        emit(TodoErrorState(e.toString()));
+      }
+    });
+
+    on<AddTodoEvent>((event, emit) async {
+      try {
+        await repository.addTodo(event.title);
+        add(LoadTodosEvent());
+      } catch (e) {
+        emit(TodoErrorState(e.toString()));
+      }
+    });
+ 
+ 
+    on<DeleteTodoEvent>((event, emit) async {
+      try {
+        await repository.deleteTodo(event.id);
+        add(LoadTodosEvent());
+      } catch (e) {
+        emit(TodoErrorState(e.toString()));
+      }
+    });
   }
 }
