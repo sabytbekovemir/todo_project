@@ -145,7 +145,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
       }
     });
  
- 
+
     on<DeleteTodoEvent>((event, emit) async {
       try {
         await repository.deleteTodo(event.id);
@@ -156,3 +156,94 @@ class TodoBloc extends Bloc<TodoEvent, TodoState> {
     });
   }
 }
+
+
+// ui
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: RepositoryProvider(
+        create: (context) => TodoRepository(),
+        child: BlocProvider(
+          create: (context) => TodoBloc(context.read<TodoRepository>())..add(LoadTodosEvent()),
+          child: const TodoScreen(),
+        ),
+      ),
+    );
+  }
+}
+
+class TodoScreen extends StatelessWidget {
+  const TodoScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final textController = TextEditingController();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Todo List (BLoC + Server)')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: textController,
+                    decoration: const InputDecoration(labelText: 'New Task'),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    if (textController.text.isNotEmpty) {
+                      context.read<TodoBloc>().add(AddTodoEvent(textController.text));
+                      textController.clear();
+                    }
+                  },
+                )
+              ],
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<TodoBloc, TodoState>(
+              builder: (context, state) {
+                if (state is TodoLoadingState) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is TodoLoadedState) {
+                  return ListView.builder(
+                    itemCount: state.todos.length,
+                    itemBuilder: (context, index) {
+                      final item = state.todos[index];
+                      return ListTile(
+                        title: Text(item.title),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            context.read<TodoBloc>().add(DeleteTodoEvent(item.id));
+                          },
+                        ),
+                      );
+                    },
+                  );
+                } else if (state is TodoErrorState) {
+                  return Center(child: Text('Error: ${state.message}'));
+                }
+                return const SizedBox();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+} //it was a disaster
