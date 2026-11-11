@@ -1,0 +1,9 @@
+# Node
+node_modules/
+
+# Flutter & Dart
+.dart_tool/
+.idea/
+build/
+.vscode/
+*.iml
